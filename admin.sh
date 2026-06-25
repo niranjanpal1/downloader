@@ -8,10 +8,22 @@ WHITE='\033[1;37m'
 RESET='\033[0m'
 
 # ==========================================
-# 🔒 ADMIN SECURITY CONFIGURATIONS
+# 🔒 LOCAL ENVIRONMENT PARSING LAYER
 # ==========================================
-ADMIN_PASSWORD="AKASH_SECRET_PASS" # <--- Ekhane apnar icchemoto secure password din
-ALLOWED_ADMIN_DEV="UL-4F2CC979-HW" # <--- Apnar nijer personal Device ID
+ENV_FILE=".env"
+if [ -f "$ENV_FILE" ]; then
+    export $(grep -v '^#' "$ENV_FILE" | xargs)
+else
+    echo -e "${RED}❌ Local Configuration Error: .env file missing!${RESET}"
+    exit 1
+fi
+
+if [ -z "$ADMIN_PASSWORD" ]; then
+    echo -e "${RED}❌ Error: ADMIN_PASSWORD variables not mapped properly in .env!${RESET}"
+    exit 1
+fi
+
+ALLOWED_ADMIN_DEV="UL-4F2CC979-HW" # <--- Apnar personal Device ID
 # ==========================================
 
 # 1. Device Verification Layer
@@ -28,7 +40,7 @@ fi
 # 2. Password Verification Layer
 clear
 echo -e "${YELLOW}=================================================${RESET}"
-echo -e "${YELLOW}       🔒 UL ADMIN ENGINE - SECURITY GATEWAY     ${RESET}"
+echo -e "${YELLOW}       🔒 UL ADMIN ENGINE - ENVIRONMENT GATEWAY   ${RESET}"
 echo -e "${YELLOW}=================================================${RESET}"
 printf "${WHITE}🔑 Enter Admin Secure Password: ${RESET}"
 read -s pass_input
@@ -96,7 +108,7 @@ while true; do
         4)
             echo -e "${YELLOW}📤 Syncing and pushing database to GitHub...${RESET}"
             git add key.json
-            git commit -m "Database dynamically modified via Secure Admin Console"
+            git commit -m "Database dynamically modified via Secure Env Control Console"
             git push origin main
             echo -e "${GREEN}✔ Changes successfully deployed to Cloud!${RESET}"
             sleep 2
