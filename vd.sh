@@ -11,15 +11,21 @@ RESET='\033[0m'
 
 # --- UL Configurations ---
 FB_URL="https://www.facebook.com/akash.pal.niranjan"
-KEY_URL="https://raw.githubusercontent.com/niranjanpal1/downloader/main/key.txt"
+KEY_URL="https://raw.githubusercontent.com/niranjanpal1/downloader/main/key.json"
 YTDL="yt-dlp --no-cache-dir --rm-cache-dir"
+
+# Storage Directories
 DOWNLOAD_DIR="/sdcard/Download"
+VIDEO_DIR="$DOWNLOAD_DIR/UL-Videos"
+AUDIO_DIR="$DOWNLOAD_DIR/UL-Audio"
+IMAGE_DIR="$DOWNLOAD_DIR/UL-Images"
 HISTORY_FILE="$DOWNLOAD_DIR/download_history.txt"
+
 SCRIPT_DIR="$HOME/downloader"
 DEVICE_FILE="$HOME/.vd_device_lock"
 BAN_FILE="$HOME/.vd_ban"
 MAX_ATTEMPTS=3
-SCRIPT_VERSION="1.0-UL"
+SCRIPT_VERSION="2.0-UL"
 
 # Auto install UL dependencies
 if ! command -v yt-dlp &> /dev/null; then
@@ -31,13 +37,13 @@ if ! command -v jq &> /dev/null; then
     pkg install jq -y
 fi
 
-# UL Storage setup
+# UL Storage setup and structural directory mapping
 if [ ! -d "$DOWNLOAD_DIR" ]; then
     echo -e "${YELLOW}🔑 [UL-ACCESS] Requesting Storage Access...${RESET}"
     termux-setup-storage
     sleep 2
-    mkdir -p "$DOWNLOAD_DIR"
 fi
+mkdir -p "$VIDEO_DIR" "$AUDIO_DIR" "$IMAGE_DIR"
 
 clear
 # --- UL Security Functions ---
@@ -59,11 +65,14 @@ check_device_lock() {
     if [ -f "$DEVICE_FILE" ]; then
         SAVED_KEY=$(cat "$DEVICE_FILE")
         SERVER_DATA=$(curl -s --fail --max-time 10 "$KEY_URL")
-        REAL_KEY=$(echo "$SERVER_DATA" | jq -r '.key')
-        if [ "$SAVED_KEY" = "$REAL_KEY" ]; then
-            echo -e "${GREEN}🔓 [UL-LOCK] Device verified via cloud server database!${RESET}"
-            sleep 1
-            return 0
+        if [ $? -eq 0 ] && [ ! -z "$SERVER_DATA" ]; then
+            USER_STATUS=$(echo "$SERVER_DATA" | jq -r ".users.\"$SAVED_KEY\".status")
+            USER_EXPIRY=$(echo "$SERVER_DATA" | jq -r ".users.\"$SAVED_KEY\".expiry")
+            TODAY=$(date +%Y-%m-%d)
+            
+            if [ "$USER_STATUS" = "active" ] && [[ ! "$TODAY" > "$USER_EXPIRY" ]]; then
+                return 0
+            fi
         fi
     fi
     return 1
@@ -73,20 +82,31 @@ check_device_lock() {
 attempts=0
 check_ban
 
+# Fetch server configurations initially
+SERVER_DATA=$(curl -s --fail --max-time 10 "$KEY_URL")
+if [ -z "$SERVER_DATA" ]; then
+    echo -e "${RED}❌ [UL-ERROR] Server offline or Network drop. Cannot verify license.${RESET}"
+    exit 1
+fi
+
+ADMIN_NOTICE=$(echo "$SERVER_DATA" | jq -r '.notice')
+
 if ! check_device_lock; then
     while true; do
         clear
         echo -e "${RED}=================================================${RESET}"
-        echo -e "${RED}   🔒 ULTIMATE PREMIUM MOD LOCKED - v${SCRIPT_VERSION}   ${RESET}"
+        echo -e "${RED}   🔒 ULTIMATE MULTI-USER CLOUD LOCKED - v${SCRIPT_VERSION} ${RESET}"
         echo -e "${RED}=================================================${RESET}"
-        echo -e "${WHITE} 📢 INSTRUCTIONS:${RESET}"
-        echo -e "${GREEN} 1. Get the secret code from Admin's Facebook Bio.${RESET}"
-        echo -e "${YELLOW} 2. Warning: ${MAX_ATTEMPTS} wrong keys = 1 Hour UL System Ban!${RESET}"
+        echo -e "${WHITE} 📢 NOTICE BOARD:${RESET}"
+        echo -e "${YELLOW}  $ADMIN_NOTICE ${RESET}"
+        echo -e "${RED}-------------------------------------------------${RESET}"
+        echo -e "${WHITE} 👤 1. Get your unique license key from Admin.${RESET}"
+        echo -e "${WHITE} ⚠️  2. ${MAX_ATTEMPTS} wrong keys = 1 Hour UL System Ban.${RESET}"
         echo -e "${RED}=================================================${RESET}"
         echo
         echo -e "${CYAN}🔗 Admin Facebook Profile: ${FB_URL}${RESET}"
         echo -e "${MAGENTA}-------------------------------------------------${RESET}"
-        echo -e "${WHITE}👉 Press ENTER to Open Facebook & Get Key...${RESET}"
+        echo -e "${WHITE}👉 Press ENTER to Open Facebook...${RESET}"
         read
 
         if command -v termux-open &> /dev/null; then
@@ -96,39 +116,14 @@ if ! check_device_lock; then
         fi
 
         echo
-        printf "${WHITE}🔑 Enter UL Secret Key: ${RESET}"
+        printf "${WHITE}🔑 Enter Your Unique UL Key: ${RESET}"
         read user_code
 
-        echo -e "${YELLOW}⏳ Connecting to UL Secure Validation Server...${RESET}"
-        SERVER_DATA=$(curl -s --fail --max-time 10 "$KEY_URL")
-
-        if [ -z "$SERVER_DATA" ]; then
-            echo -e "\n${RED}❌ [UL-ERROR] Server connection failed! Check network connection.${RESET}"
-            read
-            continue
-        fi
-
-        REAL_KEY=$(echo "$SERVER_DATA" | jq -r '.key')
-        EXPIRY=$(echo "$SERVER_DATA" | jq -r '.expiry')
-
+        USER_STATUS=$(echo "$SERVER_DATA" | jq -r ".users.\"$user_code\".status")
+        USER_EXPIRY=$(echo "$SERVER_DATA" | jq -r ".users.\"$user_code\".expiry")
         TODAY=$(date +%Y-%m-%d)
-        if [[ "$TODAY" > "$EXPIRY" ]]; then
-            echo -e "\n${RED}⛔ [UL-EXPIRED] Key validity has ended! Expired on: ${EXPIRY}${RESET}"
-            read
-            exit 1
-        fi
 
-        if [ "$user_code" = "$REAL_KEY" ]; then
-            echo "$REAL_KEY" > "$DEVICE_FILE"
-            clear
-            echo -e "${GREEN}=================================================${RESET}"
-            echo -e "${GREEN}🎉 ACCESS GRANTED - UL DEVICE REGISTERED ✔       ${RESET}"
-            echo -e "${GREEN}=================================================${RESET}"
-            echo -e "${WHITE}🛡️ License Valid Till: ${EXPIRY}${RESET}"
-            echo -e "${CYAN}Press Enter to step into the Engine...${RESET}"
-            read
-            break
-        else
+        if [ "$USER_STATUS" = "null" ]; then
             attempts=$((attempts + 1))
             REMAIN=$((MAX_ATTEMPTS - attempts))
             if [ $attempts -ge $MAX_ATTEMPTS ]; then
@@ -137,8 +132,26 @@ if ! check_device_lock; then
                 echo -e "\n${RED}⛔ [UL-BLOCK] Device banned for 1 hour due to excessive failures!${RESET}"
                 exit 1
             fi
-            echo -e "\n${RED}❌ Invalid Key Entry! ${REMAIN} UL validation attempts left.${RESET}"
+            echo -e "\n${RED}❌ Invalid License Key! ${REMAIN} UL validation attempts left.${RESET}"
             read
+        elif [ "$USER_STATUS" = "blocked" ]; then
+            echo -e "\n${RED}⛔ [UL-REVOKED] This key has been blocked by the admin!${RESET}"
+            read
+            exit 1
+        elif [[ "$TODAY" > "$USER_EXPIRY" ]]; then
+            echo -e "\n${RED}⛔ [UL-EXPIRED] Key validity has ended! Expired on: ${USER_EXPIRY}${RESET}"
+            read
+            exit 1
+        elif [ "$USER_STATUS" = "active" ]; then
+            echo "$user_code" > "$DEVICE_FILE"
+            clear
+            echo -e "${GREEN}=================================================${RESET}"
+            echo -e "${GREEN}🎉 ACCESS GRANTED - CLOUD LICENSE CONNECTED ✔   ${RESET}"
+            echo -e "${GREEN}=================================================${RESET}"
+            echo -e "${WHITE}🛡️ License Valid Till: ${USER_EXPIRY}${RESET}"
+            echo -e "${CYAN}Press Enter to step into the Engine...${RESET}"
+            read
+            break
         fi
     done
 fi
@@ -149,18 +162,20 @@ while true; do
     echo -e "${CYAN}=================================================${RESET}"
     echo -e "${MAGENTA} 🚀  ULTIMATE DOWNLOADER - UL MULTI-PRO HUB v${SCRIPT_VERSION} ${RESET}"
     echo -e "${CYAN}=================================================${RESET}"
-    echo -e "${GREEN}🔓 Security Status: UL Verified | 👤 Admin: Akash Pal${RESET}"
+    echo -e "${GREEN}🔓 License: Active/Verified | 👤 Admin: Akash Pal${RESET}"
+    echo -e "${YELLOW}📢 Notice: $ADMIN_NOTICE${RESET}"
+    echo -e "${CYAN}=================================================${RESET}"
     echo
 
-    echo -e " [1] ${GREEN}⭐ Max 1080p Video Quality (UL Best Overall)${RESET}"
-    echo -e " [2] ${BLUE}🎬 720p HD Video Download (UL Data Saver)${RESET}"
-    echo -e " [3] ${YELLOW}🎧 High Quality MP3 Extraction (UL Audio)${RESET}"
-    echo -e " [4] ${MAGENTA}🖼️ Direct Image Download (UL Media Engine)${RESET}"
-    echo -e " [5] ${CYAN}📸 Grab Video Thumbnail (UL Snapshot)${RESET}"
+    echo -e " [1] ${GREEN}⭐ Max 1080p Video Quality (Saves to UL-Videos)${RESET}"
+    echo -e " [2] ${BLUE}🎬 720p HD Video Download (Saves to UL-Videos)${RESET}"
+    echo -e " [3] ${YELLOW}🎧 High Quality MP3 Extraction (Saves to UL-Audio)${RESET}"
+    echo -e " [4] ${MAGENTA}🖼️ Direct Image Download (Saves to UL-Images)${RESET}"
+    echo -e " [5] ${CYAN}📸 Grab Video Thumbnail (UL Snapshot Engine)${RESET}"
     echo -e " [6] ${WHITE}📜 View UL Download History Logs${RESET}"
     echo -e " [7] ${RED}🗑️ Clear All Saved UL Logs${RESET}"
     echo -e " [8] ${GREEN}🔄 Sync & Pull Latest UL Updates${RESET}"
-    echo -e " [9] ${YELLOW}🔐 Emergency Lock Device Base${RESET}"
+    echo -e " [9] ${YELLOW}🔐 Emergency Lock/Unlink Device License${RESET}"
     echo -e " [0] ${RED}❌ Exit UL Engine${RESET}"
     echo
     echo -e "${CYAN}-------------------------------------------------${RESET}"
@@ -243,26 +258,37 @@ while true; do
             fi
 
             echo -e "\n${YELLOW}⏳ Processing request through UL Downloader Pipelines...${RESET}\n"
-            OUT="$DOWNLOAD_DIR/%(title).50s.%(ext)s"
             
             case $op in
-                1) $YTDL $PLAYLIST_ARG -f "bestvideo+bestaudio/best" -o "$OUT" "$url"; type_str="UL-1080p Video" ;;
-                2) $YTDL $PLAYLIST_ARG -f "bestvideo[height<=720]+bestaudio/best" -o "$OUT" "$url"; type_str="UL-720p Video" ;;
-                3) $YTDL $PLAYLIST_ARG -x --audio-format mp3 -o "$OUT" "$url"; type_str="UL-MP3 Audio" ;;
+                1) 
+                    OUT="$VIDEO_DIR/%(title).50s.%(ext)s"
+                    $YTDL $PLAYLIST_ARG -f "bestvideo+bestaudio/best" -o "$OUT" "$url"
+                    type_str="UL-1080p Video" 
+                    ;;
+                2) 
+                    OUT="$VIDEO_DIR/%(title).50s.%(ext)s"
+                    $YTDL $PLAYLIST_ARG -f "bestvideo[height<=720]+bestaudio/best" -o "$OUT" "$url"
+                    type_str="UL-720p Video" 
+                    ;;
+                3) 
+                    OUT="$AUDIO_DIR/%(title).50s.%(ext)s"
+                    $YTDL $PLAYLIST_ARG -x --audio-format mp3 -o "$OUT" "$url"
+                    type_str="UL-MP3 Audio" 
+                    ;;
                 4) 
                     FILE_NAME="UL_IMG_$(date +%s).jpg"
-                    curl -L -s --fail -o "$DOWNLOAD_DIR/$FILE_NAME" "$url"
+                    curl -L -s --fail -o "$IMAGE_DIR/$FILE_NAME" "$url"
                     type_str="UL-Image" 
                     ;;
                 5) 
-                    $YTDL --skip-download --write-thumbnail --convert-thumbnails jpg -o "$DOWNLOAD_DIR/%(title).50s" "$url"
+                    OUT="$IMAGE_DIR/%(title).50s"
+                    $YTDL --skip-download --write-thumbnail --convert-thumbnails jpg -o "$OUT" "$url"
                     type_str="UL-Thumbnail" 
                     ;;
             esac
             
             if [ $? -eq 0 ]; then
                 echo -e "\n${GREEN}✔ UL Core Pipeline Executed Successfully! 🎉${RESET}"
-                echo -e "${GREEN}📂 Track files in directory: $DOWNLOAD_DIR${RESET}"
                 echo "$(date '+%Y-%m-%d %H:%M:%S') | $type_str | $url" >> "$HISTORY_FILE"
             else
                 echo -e "\n${RED}❌ UL Pipeline Fault! Connection timed out or link restricted.${RESET}"
