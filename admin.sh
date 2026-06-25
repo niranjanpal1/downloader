@@ -7,8 +7,40 @@ CYAN='\033[1;36m'
 WHITE='\033[1;37m'
 RESET='\033[0m'
 
-JSON_FILE="key.json"
+# ==========================================
+# 🔒 ADMIN SECURITY CONFIGURATIONS
+# ==========================================
+ADMIN_PASSWORD="AKASH_SECRET_PASS" # <--- Ekhane apnar icchemoto secure password din
+ALLOWED_ADMIN_DEV="UL-4F2CC979-HW" # <--- Apnar nijer personal Device ID
+# ==========================================
 
+# 1. Device Verification Layer
+get_device_id() {
+    echo "UL-$(uname -m | md5sum | cut -c1-8 | tr 'a-z' 'A-Z')-HW"
+}
+CURRENT_HW_ID=$(get_device_id)
+
+if [ "$CURRENT_HW_ID" != "$ALLOWED_ADMIN_DEV" ]; then
+    echo -e "${RED}⛔ ACCESS DENIED! Your device is not registered as Admin.${RESET}"
+    exit 1
+fi
+
+# 2. Password Verification Layer
+clear
+echo -e "${YELLOW}=================================================${RESET}"
+echo -e "${YELLOW}       🔒 UL ADMIN ENGINE - SECURITY GATEWAY     ${RESET}"
+echo -e "${YELLOW}=================================================${RESET}"
+printf "${WHITE}🔑 Enter Admin Secure Password: ${RESET}"
+read -s pass_input
+echo ""
+
+if [ "$pass_input" != "$ADMIN_PASSWORD" ]; then
+    echo -e "${RED}❌ Invalid Admin Password! Security alert triggered.${RESET}"
+    exit 1
+fi
+
+# --- Core Setup ---
+JSON_FILE="key.json"
 if [ ! -f "$JSON_FILE" ]; then
     echo -e "${RED}❌ key.json file khunje paowa jayni! GitHub repository folder-e thake eiti run korun.${RESET}"
     exit 1
@@ -37,7 +69,6 @@ while true; do
             printf "${WHITE}📲 Enter User Device ID (If unknown, type null): ${RESET}"
             read uhw
             
-            # Use jq to inject new user securely
             tmp=$(mktemp)
             jq --arg k "$ukey" --arg exp "$uexp" --arg hw "$uhw" '.users[$k] = {"status": "active", "expiry": $exp, "device_id": $hw, "reason": ""}' "$JSON_FILE" > "$tmp" && mv "$tmp" "$JSON_FILE"
             echo -e "${GREEN}✔ User $ukey added successfully locally!${RESET}"
@@ -65,7 +96,7 @@ while true; do
         4)
             echo -e "${YELLOW}📤 Syncing and pushing database to GitHub...${RESET}"
             git add key.json
-            git commit -m "Database dynamically modified via Admin Console"
+            git commit -m "Database dynamically modified via Secure Admin Console"
             git push origin main
             echo -e "${GREEN}✔ Changes successfully deployed to Cloud!${RESET}"
             sleep 2
