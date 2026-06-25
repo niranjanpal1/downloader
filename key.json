@@ -1,8 +1,33 @@
 {
-  "notice": "🔥 CLOUD HARDWARE LOCK ACTIVE v3.5-UL ENGINE! 🔥",
+  "notice": "",
   "users": {
-    "AKASH-PREMIUM-UL1": { "status": "active", "expiry": "2026-12-31", "device_id": "UL-4F2CC979-HW", "reason": "" },
-    "NIRANJAN-VIP-UL2": { "status": "active", "expiry": "2027-01-15", "device_id": "null", "reason": "" },
-    "TEST-KEY-UL3": { "status": "blocked", "expiry": "2026-06-01", "device_id": "null", "reason": "Terms violated!" }
+    "AKASH-PREMIUM-UL1": {
+      "status": "active",
+      "expiry": "2026-12-31",
+      "device_id": "UL-4F2CC979-HW",
+      "reason": ""
+    },
+    "NIRANJAN-VIP-UL2": {
+      "status": "active",
+      "expiry": "2027-01-15",
+      "device_id": "null",
+      "reason": ""
+    },
+    "TEST-KEY-UL3": {
+      "status": "blocked",
+      "expiry": "2026-06-01",
+      "device_id": "null",
+      "reason": "Terms violated!"
+    },
+    "AKASH-VIP-KEY": {
+      "status": "active",
+      "expiry": "2026-12-31",
+      "device_id": "null",
+      "reason": ""
+    },
+    "": {
+      "status": "blocked",
+      "reason": ""
+    }
   }
 }
