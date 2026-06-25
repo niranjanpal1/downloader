@@ -62,11 +62,11 @@ check_device_lock() {
     return 1
 }
 
-# --- Premium UI Header ---
+# --- Premium UI Header (Fixed Alignment) ---
 print_header() {
     clear
     echo -e "${CYAN}${BOLD}╔═══════════════════════════════════════════════╗${RESET}"
-    echo -e "${CYAN}${BOLD}║ ${MAGENTA}🚀 ULTIMATE PREMIUM DOWNLOADER - PRO ELITE ${CYAN}   ║${RESET}"
+    echo -e "${CYAN}${BOLD}║  🚀 ULTIMATE PREMIUM DOWNLOADER - PRO ELITE   ║${RESET}"
     echo -e "${CYAN}${BOLD}╚═══════════════════════════════════════════════╝${RESET}"
 }
 
@@ -115,24 +115,24 @@ if ! check_device_lock; then
     done
 fi
 
-# --- Main Premium Hub Loop ---
+# --- Main Premium Hub Loop (Line by Line Aligned) ---
 while true; do
     print_header
-    echo -e "${GREEN}${BOLD}  🔒 STATUS: VERIFIED  |  ⏳ VALIDITY: $GLOBAL_DAYS_LEFT DAYS ${RESET}"
-    echo -e "${DIM}  ───────────────────────────────────────────────${RESET}"
-    echo -e "  ${WHITE}[1] ${CYAN}💎 MAX 1080P PRO    ${WHITE}[4] ${CYAN}🖼️ IMAGE GRABBER"
-    echo -e "  ${WHITE}[2] ${CYAN}🎬 720P HD STREAM  ${WHITE}[5] ${CYAN}📸 THUMB EXTRACT"
-    echo -e "  ${WHITE}[3] ${CYAN}🎧 HI-RES MP3      ${WHITE}[0] ${RED}❌ EXIT APP${RESET}"
-    echo -e "${DIM}  ───────────────────────────────────────────────${RESET}"
-    printf "${BOLD}  👉 SELECT OPERATION (0-5) : ${RESET}"
+    echo -e "${GREEN}${BOLD} 🔓 STATUS: VERIFIED   |  ⏳ VALIDITY: $GLOBAL_DAYS_LEFT DAYS ${RESET}"
+    echo -e "${DIM} ───────────────────────────────────────────────${RESET}"
+    echo -e "  ${WHITE}[1]${CYAN} 💎 MAX 1080P PRO      ${WHITE}[4]${CYAN} 🖼️  IMAGE GRABBER"
+    echo -e "  ${WHITE}[2]${CYAN} 🎬 720P HD STREAM     ${WHITE}[5]${CYAN} 📸 THUMB EXTRACT"
+    echo -e "  ${WHITE}[3]${CYAN} 🎧 HI-RES MP3         ${WHITE}[0]${RED} ❌ EXIT APP${RESET}"
+    echo -e "${DIM} ───────────────────────────────────────────────${RESET}"
+    printf "${BOLD} 👉 SELECT OPERATION (0-5) : ${RESET}"
     read op
 
     [ "$op" = "0" ] && exit 0
     if [[ "$op" =~ ^[1-5]$ ]]; then
-        printf "  ${WHITE}🔗 PASTE TARGET URL : ${RESET}"; read url
+        printf " ${WHITE}🔗 PASTE TARGET URL : ${RESET}"; read url
         [ -z "$url" ] && continue
 
-        echo -e "\n  ${YELLOW}⚡ INITIALIZING PRO PIPELINES...${RESET}"
+        echo -e "\n ${YELLOW}⚡ INITIALIZING PRO PIPELINES...${RESET}"
         case $op in
             1) $YTDL -f "bestvideo+bestaudio/best" -o "$VIDEO_DIR/%(title).50s.%(ext)s" "$url" ;;
             2) $YTDL -f "bestvideo[height<=720]+bestaudio/best" -o "$VIDEO_DIR/%(title).50s.%(ext)s" "$url" ;;
@@ -140,6 +140,6 @@ while true; do
             4) curl -L -o "$IMAGE_DIR/UL_IMG_$(date +%s).jpg" "$url" ;;
             5) $YTDL --skip-download --write-thumbnail --convert-thumbnails jpg -o "$IMAGE_DIR/%(title).50s" "$url" ;;
         esac
-        echo -e "\n  ${GREEN}${BOLD}✔ TASK COMPLETED SUCCESSFULLY!${RESET}"; read
+        echo -e "\n ${GREEN}${BOLD}✔ TASK COMPLETED SUCCESSFULLY!${RESET}"; read
     fi
 done
