@@ -42,7 +42,12 @@
       "expiry": "2026-12-31",
       "device_id": "null",
       "reason": "Self-Registered"
+    },
+    "Akash": {
+      "status": "active",
+      "expiry": "2026-07-25",
+      "device_id": "null",
+      "reason": ""
     }
   }
 }
-
