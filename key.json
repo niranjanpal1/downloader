@@ -14,10 +14,10 @@
       "reason": ""
     },
     "TEST-KEY-UL3": {
-      "status": "blocked",
+      "status": "active",
       "expiry": "2026-06-01",
       "device_id": "null",
-      "reason": "Terms violated!"
+      "reason": ""
     },
     "AKASH-VIP-KEY": {
       "status": "active",
