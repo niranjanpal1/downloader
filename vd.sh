@@ -12,7 +12,7 @@ RESET='\033[0m'
 # --- UL Configurations ---
 FB_URL="https://www.facebook.com/akash.pal.niranjan"
 KEY_URL="https://raw.githubusercontent.com/niranjanpal1/downloader/main/key.json"
-YTDL="yt-dlp --no-cache-dir --rm-cache-dir"
+YTDL="yt-dlp --no-cache-dir --rm-cache-dir --concurrent-fragments 5"
 
 # Storage Directories
 DOWNLOAD_DIR="/sdcard/Download"
@@ -25,7 +25,7 @@ SCRIPT_DIR="$HOME/downloader"
 DEVICE_FILE="$HOME/.vd_device_lock"
 BAN_FILE="$HOME/.vd_ban"
 MAX_ATTEMPTS=3
-SCRIPT_VERSION="2.0-UL"
+SCRIPT_VERSION="3.5-UL-SECURE"
 
 # Auto install UL dependencies
 if ! command -v yt-dlp &> /dev/null; then
@@ -37,7 +37,7 @@ if ! command -v jq &> /dev/null; then
     pkg install jq -y
 fi
 
-# UL Storage setup and structural directory mapping
+# UL Storage setup
 if [ ! -d "$DOWNLOAD_DIR" ]; then
     echo -e "${YELLOW}🔑 [UL-ACCESS] Requesting Storage Access...${RESET}"
     termux-setup-storage
@@ -45,7 +45,32 @@ if [ ! -d "$DOWNLOAD_DIR" ]; then
 fi
 mkdir -p "$VIDEO_DIR" "$AUDIO_DIR" "$IMAGE_DIR"
 
+# --- UL Unique Device ID Generator ---
+get_device_id() {
+    local raw_id=$(uname -m | md5sum | cut -d' ' -f1 | tr 'a-z' 'A-Z' | cut -c1-8)
+    echo "UL-${raw_id}-HW"
+}
+CURRENT_HW_ID=$(get_device_id)
+
 clear
+# --- UL Date Calculation Engine ---
+calculate_days_left() {
+    local expiry_date=$1
+    if [ -z "$expiry_date" ] || [ "$expiry_date" = "null" ]; then
+        echo "0"
+        return
+    fi
+    local current_epoch=$(date +%s)
+    local expiry_epoch=$(date -d "$expiry_date" +%s 2>/dev/null)
+    if [ $? -ne 0 ]; then
+        echo "Valid"
+        return
+    fi
+    local diff=$((expiry_epoch - current_epoch))
+    local days=$((diff / 86400))
+    if [ $days -lt 0 ]; then echo "0"; else echo "$days"; fi
+}
+
 # --- UL Security Functions ---
 check_ban() {
     if [ -f "$BAN_FILE" ]; then
@@ -68,9 +93,11 @@ check_device_lock() {
         if [ $? -eq 0 ] && [ ! -z "$SERVER_DATA" ]; then
             USER_STATUS=$(echo "$SERVER_DATA" | jq -r ".users.\"$SAVED_KEY\".status")
             USER_EXPIRY=$(echo "$SERVER_DATA" | jq -r ".users.\"$SAVED_KEY\".expiry")
+            ALLOWED_HW_ID=$(echo "$SERVER_DATA" | jq -r ".users.\"$SAVED_KEY\".device_id")
             TODAY=$(date +%Y-%m-%d)
             
-            if [ "$USER_STATUS" = "active" ] && [[ ! "$TODAY" > "$USER_EXPIRY" ]]; then
+            if [ "$USER_STATUS" = "active" ] && [ "$ALLOWED_HW_ID" = "$CURRENT_HW_ID" ] && [[ ! "$TODAY" > "$USER_EXPIRY" ]]; then
+                GLOBAL_DAYS_LEFT=$(calculate_days_left "$USER_EXPIRY")
                 return 0
             fi
         fi
@@ -82,7 +109,6 @@ check_device_lock() {
 attempts=0
 check_ban
 
-# Fetch server configurations initially
 SERVER_DATA=$(curl -s --fail --max-time 10 "$KEY_URL")
 if [ -z "$SERVER_DATA" ]; then
     echo -e "${RED}❌ [UL-ERROR] Server offline or Network drop. Cannot verify license.${RESET}"
@@ -95,13 +121,15 @@ if ! check_device_lock; then
     while true; do
         clear
         echo -e "${RED}=================================================${RESET}"
-        echo -e "${RED}   🔒 ULTIMATE MULTI-USER CLOUD LOCKED - v${SCRIPT_VERSION} ${RESET}"
+        echo -e "${RED}   🔒 HARDWARE LEVEL ANTI-SHARE LOCKED - v${SCRIPT_VERSION} ${RESET}"
         echo -e "${RED}=================================================${RESET}"
+        echo -e "${WHITE} 📲 YOUR DEVICE ID : ${CYAN}$CURRENT_HW_ID${RESET}"
+        echo -e "${RED}-------------------------------------------------${RESET}"
         echo -e "${WHITE} 📢 NOTICE BOARD:${RESET}"
         echo -e "${YELLOW}  $ADMIN_NOTICE ${RESET}"
         echo -e "${RED}-------------------------------------------------${RESET}"
-        echo -e "${WHITE} 👤 1. Get your unique license key from Admin.${RESET}"
-        echo -e "${WHITE} ⚠️  2. ${MAX_ATTEMPTS} wrong keys = 1 Hour UL System Ban.${RESET}"
+        echo -e "${WHITE} 👤 1. Copy your Device ID & Send to Admin to register.${RESET}"
+        echo -e "${WHITE} ⚠️  2. 1 Key = 1 Device Only. Sharing will block your ID.${RESET}"
         echo -e "${RED}=================================================${RESET}"
         echo
         echo -e "${CYAN}🔗 Admin Facebook Profile: ${FB_URL}${RESET}"
@@ -116,11 +144,13 @@ if ! check_device_lock; then
         fi
 
         echo
-        printf "${WHITE}🔑 Enter Your Unique UL Key: ${RESET}"
+        printf "${WHITE}🔑 Enter Your Registered UL Key: ${RESET}"
         read user_code
 
         USER_STATUS=$(echo "$SERVER_DATA" | jq -r ".users.\"$user_code\".status")
         USER_EXPIRY=$(echo "$SERVER_DATA" | jq -r ".users.\"$user_code\".expiry")
+        ALLOWED_HW_ID=$(echo "$SERVER_DATA" | jq -r ".users.\"$user_code\".device_id")
+        USER_REASON=$(echo "$SERVER_DATA" | jq -r ".users.\"$user_code\".reason")
         TODAY=$(date +%Y-%m-%d)
 
         if [ "$USER_STATUS" = "null" ]; then
@@ -135,23 +165,35 @@ if ! check_device_lock; then
             echo -e "\n${RED}❌ Invalid License Key! ${REMAIN} UL validation attempts left.${RESET}"
             read
         elif [ "$USER_STATUS" = "blocked" ]; then
-            echo -e "\n${RED}⛔ [UL-REVOKED] This key has been blocked by the admin!${RESET}"
-            read
-            exit 1
+            echo -e "\n${RED}⛔ [UL-REVOKED] THIS KEY HAS BEEN BLOCKED BY ADMIN!${RESET}"
+            echo -e "${YELLOW}💬 Reason: ${USER_REASON}${RESET}"
+            read; exit 1
+        elif [ "$ALLOWED_HW_ID" != "null" ] && [ "$ALLOWED_HW_ID" != "$CURRENT_HW_ID" ]; then
+            echo -e "\n${RED}⛔ [UL-SECURITY-ALERT] HARDWARE MISMATCH!${RESET}"
+            echo -e "${RED}This license key is already registered to another phone device!${RESET}"
+            read; exit 1
         elif [[ "$TODAY" > "$USER_EXPIRY" ]]; then
             echo -e "\n${RED}⛔ [UL-EXPIRED] Key validity has ended! Expired on: ${USER_EXPIRY}${RESET}"
-            read
-            exit 1
+            read; exit 1
         elif [ "$USER_STATUS" = "active" ]; then
+            # Auto binding device on server setup if database is null
+            if [ "$ALLOWED_HW_ID" = "null" ]; then
+                clear
+                echo -e "${YELLOW}⚠️ This Key is not mapped with any hardware ID yet!${RESET}"
+                echo -e "${WHITE}Please ask Admin to set your Device ID to this key on GitHub.${RESET}"
+                echo -e "${CYAN}Your Device ID: $CURRENT_HW_ID${RESET}"
+                read; continue
+            fi
+
             echo "$user_code" > "$DEVICE_FILE"
+            GLOBAL_DAYS_LEFT=$(calculate_days_left "$USER_EXPIRY")
             clear
             echo -e "${GREEN}=================================================${RESET}"
             echo -e "${GREEN}🎉 ACCESS GRANTED - CLOUD LICENSE CONNECTED ✔   ${RESET}"
             echo -e "${GREEN}=================================================${RESET}"
-            echo -e "${WHITE}🛡️ License Valid Till: ${USER_EXPIRY}${RESET}"
+            echo -e "${WHITE}🛡️ License Valid Till: ${USER_EXPIRY} (${GLOBAL_DAYS_LEFT} Days Left)${RESET}"
             echo -e "${CYAN}Press Enter to step into the Engine...${RESET}"
-            read
-            break
+            read; break
         fi
     done
 fi
@@ -160,9 +202,13 @@ fi
 while true; do
     clear
     echo -e "${CYAN}=================================================${RESET}"
-    echo -e "${MAGENTA} 🚀  ULTIMATE DOWNLOADER - UL MULTI-PRO HUB v${SCRIPT_VERSION} ${RESET}"
+    echo -e "${MAGENTA} 🚀  ULTIMATE DOWNLOADER - UL HARDENED PRO v${SCRIPT_VERSION} ${RESET}"
     echo -e "${CYAN}=================================================${RESET}"
-    echo -e "${GREEN}🔓 License: Active/Verified | 👤 Admin: Akash Pal${RESET}"
+    if [ "$GLOBAL_DAYS_LEFT" = "Valid" ]; then
+        echo -e "${GREEN}🔓 Device Identity: Verified | 👤 Admin: Akash Pal${RESET}"
+    else
+        echo -e "${GREEN}🔓 Device ID Validated (${GLOBAL_DAYS_LEFT} Days Left) | 👤 Admin: Akash Pal${RESET}"
+    fi
     echo -e "${YELLOW}📢 Notice: $ADMIN_NOTICE${RESET}"
     echo -e "${CYAN}=================================================${RESET}"
     echo
