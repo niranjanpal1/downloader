@@ -42,12 +42,7 @@
       "expiry": "2026-12-31",
       "device_id": "null",
       "reason": "Self-Registered"
-    },
-    "Nira@123@Pal": {
-      "status": "active",
-      "expiry": "2026-12-31",
-      "device_id": "9F0DC6020469CFC5",
-      "reason": "Self-Reg"
     }
   }
 }
+
