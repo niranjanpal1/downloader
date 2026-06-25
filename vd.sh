@@ -74,7 +74,7 @@ check_device_lock() {
             USER_STATUS=$(echo "$SERVER_DATA" | jq -r ".users.\"$SAVED_KEY\".status" 2>/dev/null)
             USER_EXPIRY=$(echo "$SERVER_DATA" | jq -r ".users.\"$SAVED_KEY\".expiry" 2>/dev/null)
             ALLOWED_HW_ID=$(echo "$SERVER_DATA" | jq -r ".users.\"$SAVED_KEY\".device_id" 2>/dev/null)
-            
+
             if [ "$USER_STATUS" = "active" ] && [ "$ALLOWED_HW_ID" = "$CURRENT_HW_ID" ] && [[ ! "$(date +%Y-%m-%d)" > "$USER_EXPIRY" ]]; then
                 GLOBAL_DAYS_LEFT=$(calculate_days_left "$USER_EXPIRY")
                 return 0
@@ -113,14 +113,19 @@ if ! check_device_lock; then
 
         if [ $attempts -gt 0 ]; then
             echo -e "${RED}${BOLD} ❌ ACCESS DENIED: INVALID KEY [Attempts: $attempts/$MAX_ATTEMPTS]${RESET}"
-            echo -e "${YELLOW} 👉 Press ENTER to open Facebook to get your own key!${RESET}"
+            echo -e "${YELLOW} 👉 Type 'help' and enter to contact Admin!${RESET}"
             echo -e "${DIM} ───────────────────────────────────────────────${RESET}"
-            read -p ""
-            redirect_fb
         fi
 
-        printf "${WHITE}${BOLD} 🔑 Enter Your Registered UL Key: ${RESET}"
+        printf "${WHITE}${BOLD} 🔑 Key (or 'help' for support): ${RESET}"
         read user_code
+
+        # --- Help Logic ---
+        if [[ "$user_code" == "help" ]]; then
+            echo -e "${GREEN} 🔗 Opening Admin Profile...${RESET}"
+            redirect_fb
+            continue
+        fi
 
         SERVER_DATA=$(curl -s --fail --max-time 10 "$RAW_JSON_URL")
         USER_STATUS=$(echo "$SERVER_DATA" | jq -r ".users.\"$user_code\".status" 2>/dev/null)
@@ -142,8 +147,7 @@ if ! check_device_lock; then
             elif [[ "$(date +%Y-%m-%d)" > "$USER_EXPIRY" ]]; then
                 echo -e "${RED}⛔ SYSTEM KEY EXPIRED! Update credentials.${RESET}"; read; clean_terminal_traces; exit 1
             elif [ "$USER_STATUS" = "active" ]; then
-                
-                # --- Strict 1-Key 1-Device Policy (GitHub Secure Framework) ---
+
                 if [ "$ALLOWED_HW_ID" = "null" ]; then
                     echo -e "${YELLOW}⚠️ Key Verification Success! Send this ID to Admin to Lock.${RESET}"
                     echo -e "${CYAN}🔑 YOUR DEVICE ID: $CURRENT_HW_ID${RESET}"
@@ -182,7 +186,7 @@ while true; do
         echo -e "${GREEN}🔒 Session closed safely. History wiped!${RESET}"
         exit 0
     fi
-    
+
     if [[ "$op" =~ ^[1-5]$ ]]; then
         printf " ${WHITE}🔗 PASTE TARGET URL : ${RESET}"; read url
         [ -z "$url" ] && continue
