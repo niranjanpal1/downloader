@@ -1,11 +1,5 @@
 #!/data/data/com.termux/files/usr/bin/bash
 
-# --- Anti-Debug Protection ---
-if [ -n "$LD_PRELOAD" ]; then
-    echo "Tampering detected!"
-    exit 1
-fi
-
 # --- Color Codes ---
 RED='\033[1;31m'
 GREEN='\033[1;32m'
@@ -46,7 +40,7 @@ if [! -d "$DOWNLOAD_DIR" ]; then
 fi
 
 clear
-# --- Security Check Functions ---
+# --- Security Functions ---
 check_ban() {
     if [ -f "$BAN_FILE" ]; then
         BAN_TIME=$(cat "$BAN_FILE")
@@ -67,7 +61,7 @@ check_device_lock() {
         SERVER_DATA=$(curl -s --fail --max-time 10 "$KEY_URL")
         REAL_KEY=$(echo "$SERVER_DATA" | jq -r '.key')
         if [ "$SAVED_KEY" = "$REAL_KEY" ]; then
-            echo -e "${GREEN}🔓 Device already verified! Opening app...${RESET}"
+            echo -e "${GREEN}🔓 Device already verified!${RESET}"
             sleep 1
             return 0
         fi
@@ -75,7 +69,7 @@ check_device_lock() {
     return 1
 }
 
-# --- Verification System ---
+# --- Verification ---
 attempts=0
 check_ban
 
@@ -83,16 +77,13 @@ if! check_device_lock; then
     while true; do
         clear
         echo -e "${RED}=================================================${RESET}"
-        echo -e "${RED} 🔒 PREMIUM APP LOCKED - ADVANCE SECURITY 🔒 ${RESET}"
+        echo -e "${RED} 🔒 PREMIUM APP LOCKED - SECURE v${SCRIPT_VERSION} 🔒 ${RESET}"
         echo -e "${RED}=================================================${RESET}"
-        echo -e "${WHITE} 📢 Instructions:${RESET}"
-        echo -e "${GREEN} 1. Get secret code from Admin's Facebook Bio.${RESET}"
-        echo -e "${CYAN} 2. Internet required for online verification.${RESET}"
-        echo -e "${YELLOW} 3. ${MAX_ATTEMPTS} wrong attempts = 1 hour ban.${RESET}"
+        echo -e "${WHITE} 1. Get code from Admin's Facebook Bio${RESET}"
+        echo -e "${YELLOW} 2. ${MAX_ATTEMPTS} wrong attempts = 1 hour ban${RESET}"
         echo -e "${RED}=================================================${RESET}"
         echo
         echo -e "${CYAN}🔗 Facebook: ${FB_URL}${RESET}"
-        echo -e "${MAGENTA}-------------------------------------------------${RESET}"
         echo -e "${WHITE}👉 Press ENTER to Open Facebook...${RESET}"
         read
 
@@ -104,38 +95,33 @@ if! check_device_lock; then
         printf "${WHITE}🔑 Enter Secret Key: ${RESET}"
         read user_code
 
-        # Fetch server data
-        echo -e "${YELLOW}⏳ Verifying with secure server...${RESET}"
+        echo -e "${YELLOW}⏳ Verifying with server...${RESET}"
         SERVER_DATA=$(curl -s --fail --max-time 10 "$KEY_URL")
 
         if [ -z "$SERVER_DATA" ]; then
-            echo -e "\n${RED}❌ Server connection failed! Check internet.${RESET}"
+            echo -e "\n${RED}❌ Server connection failed!${RESET}"
             read
             continue
         fi
 
         REAL_KEY=$(echo "$SERVER_DATA" | jq -r '.key')
         EXPIRY=$(echo "$SERVER_DATA" | jq -r '.expiry')
-        SERVER_VER=$(echo "$SERVER_DATA" | jq -r '.version')
 
-        # Check expiry
         TODAY=$(date +%Y-%m-%d)
         if [[ "$TODAY" > "$EXPIRY" ]]; then
-            echo -e "\n${RED}⛔ Key Expired! Contact admin for new key.${RESET}"
-            echo -e "${WHITE}Key valid till: ${EXPIRY}${RESET}"
+            echo -e "\n${RED}⛔ Key Expired! Valid till: ${EXPIRY}${RESET}"
             read
             exit 1
         fi
 
-        # Verify key
         if [ "$user_code" = "$REAL_KEY" ]; then
             echo "$REAL_KEY" > "$DEVICE_FILE"
             clear
             echo -e "${GREEN}=================================================${RESET}"
             echo -e "${GREEN}🎉 ACCESS GRANTED - DEVICE REGISTERED ✔${RESET}"
             echo -e "${GREEN}=================================================${RESET}"
-            echo -e "${WHITE}Key Valid Till: ${EXPIRY}${RESET}"
-            echo -e "${CYAN}Press Enter to continue...${RESET}"
+            echo -e "${WHITE}Valid Till: ${EXPIRY}${RESET}"
+            echo -e "${CYAN}Press Enter...${RESET}"
             read
             break
         else
@@ -144,7 +130,7 @@ if! check_device_lock; then
             if [ $attempts -ge $MAX_ATTEMPTS ]; then
                 BAN_UNTIL=$(($(date +%s) + 3600))
                 echo "$BAN_UNTIL" > "$BAN_FILE"
-                echo -e "\n${RED}⛔ 3 Wrong Attempts! Banned for 1 hour.${RESET}"
+                echo -e "\n${RED}⛔ Banned for 1 hour!${RESET}"
                 exit 1
             fi
             echo -e "\n${RED}❌ Invalid Key! ${REMAIN} attempts left.${RESET}"
@@ -162,89 +148,42 @@ while true; do
     echo -e "${GREEN}🔓 Status: Verified | 👤 Admin: Akash Pal${RESET}"
     echo
 
-    echo -e " [1] ${GREEN}⭐ 1080p Video (Best Quality)${RESET}"
-    echo -e " [2] ${BLUE}🎬 720p HD Video (Data Saver)${RESET}"
-    echo -e " [3] ${YELLOW}🎧 MP3 Audio Only${RESET}"
+    echo -e " [1] ${GREEN}⭐ 1080p Video${RESET}"
+    echo -e " [2] ${BLUE}🎬 720p HD Video${RESET}"
+    echo -e " [3] ${YELLOW}🎧 MP3 Audio${RESET}"
     echo -e " [4] ${MAGENTA}🖼️ Image Download${RESET}"
-    echo -e " [5] ${CYAN}📸 Video Thumbnail${RESET}"
-    echo -e " [6] ${WHITE}📜 History Log${RESET}"
+    echo -e " [5] ${CYAN}📸 Thumbnail${RESET}"
+    echo -e " [6] ${WHITE}📜 History${RESET}"
     echo -e " [7] ${RED}🗑️ Clear History${RESET}"
-    echo -e " [8] ${GREEN}🔄 Update Script${RESET}"
+    echo -e " [8] ${GREEN}🔄 Update${RESET}"
     echo -e " [9] ${YELLOW}🔐 Lock Device${RESET}"
     echo -e " [0] ${RED}❌ Exit${RESET}"
     echo
-    echo -e "${CYAN}-------------------------------------------------${RESET}"
-
     printf "${WHITE}👉 Option (0-9): ${RESET}"
     read op
 
     case $op in
-        6)
-            clear
-            echo -e "${YELLOW}=== DOWNLOAD HISTORY ===${RESET}"
-            if [ -f "$HISTORY_FILE" ]; then
-                cat "$HISTORY_FILE"
-            else
-                echo -e "${RED}No history found!${RESET}"
-            fi
-            read
-            ;;
-        7)
-            > "$HISTORY_FILE"
-            echo -e "${GREEN}History cleared!${RESET}"
-            sleep 1
-            ;;
-        8)
-            cd "$SCRIPT_DIR"
-            git pull
-            echo -e "${GREEN}Updated! Restarting...${RESET}"
-            sleep 2
-            exec bash "$0"
-            ;;
-        9)
-            rm -f "$DEVICE_FILE"
-            echo -e "${YELLOW}Device locked! Restart app to enter key.${RESET}"
-            sleep 2
-            exit 0
-            ;;
-        0)
-            echo -e "${RED}Goodbye! 👋${RESET}"
-            exit 0
-            ;;
+        6) clear; cat "$HISTORY_FILE" 2>/dev/null || echo "No history"; read ;;
+        7) > "$HISTORY_FILE"; echo "Cleared!"; sleep 1 ;;
+        8) cd "$SCRIPT_DIR"; git pull; exec bash "$0" ;;
+        9) rm -f "$DEVICE_FILE"; echo "Locked!"; sleep 1; exit 0 ;;
+        0) exit 0 ;;
         [1-5])
-            if [ "$op" = "4" ]; then
-                printf "${WHITE}🔗 Image URL: ${RESET}"
-            else
-                printf "${WHITE}🔗 Media Link: ${RESET}"
-            fi
-            read url
-
+            printf "${WHITE}🔗 URL: ${RESET}"; read url
             if [ -z "$url" ] || [[! "$url" =~ ^https?:// ]]; then
-                echo -e "${RED}❌ Invalid URL!${RESET}"
-                read
-                continue
+                echo "${RED}Invalid URL!${RESET}"; read; continue
             fi
-
             OUT="$DOWNLOAD_DIR/%(title).50s.%(ext)s"
             case $op in
                 1) $YTDL -f "bestvideo+bestaudio/best" -o "$OUT" "$url"; type_str="1080p" ;;
                 2) $YTDL -f "bestvideo[height<=720]+bestaudio/best" -o "$OUT" "$url"; type_str="720p" ;;
                 3) $YTDL -x --audio-format mp3 -o "$OUT" "$url"; type_str="MP3" ;;
                 4) curl -L -o "$DOWNLOAD_DIR/img_$(date +%s).jpg" "$url"; type_str="Image" ;;
-                5) $YTDL --skip-download --write-thumbnail -o "$DOWNLOAD_DIR/thumb" "$url"; type_str="Thumbnail" ;;
+                5) $YTDL --skip-download --write-thumbnail -o "$DOWNLOAD_DIR/thumb" "$url"; type_str="Thumb" ;;
             esac
-
-            if [ $? -eq 0 ]; then
-                echo -e "${GREEN}✔ Success! Saved to $DOWNLOAD_DIR${RESET}"
-                echo "$(date '+%Y-%m-%d %H:%M:%S') | $type_str | $url" >> "$HISTORY_FILE"
-            else
-                echo -e "${RED}❌ Download failed!${RESET}"
-            fi
+            [ $? -eq 0 ] && echo "$(date '+%Y-%m-%d %H:%M:%S') | $type_str | $url" >> "$HISTORY_FILE"
             read
             ;;
-        *)
-            echo -e "${RED}❌ Invalid option!${RESET}"
-            sleep 1
-            ;;
+        *) echo "${RED}Invalid!${RESET}"; sleep 1 ;;
     esac
 done
